@@ -9,154 +9,197 @@ import { extractGeneric, PartialBy } from './utils';
 
 // export const BelongsTo = <T extends ModelBase>(model: Model<T>) => {};
 
-class Document {
-  data: any;
-  constructor(data: any) {
+interface BaseModel {
+  id: string;
+}
+
+class Document<T extends BaseModel> {
+  data: T;
+  model: any;
+  constructor(data: any, model: any) {
     this.data = data;
+    this.model = model;
+  }
+  toObject() {
+    return this.data;
   }
 }
 
-export class Model<T> {
-  relations: any = {};
-  collection: Document[] = [];
+interface FindOneOptions {
+  populate: any;
+}
+
+export class Model<T extends BaseModel> {
+  private relations: any = {};
+  collection: Document<T>[] = [];
   constructor(schema?: T) {}
 
-  create(props: any) {
-    const document = new Document(props);
+  create(props: Partial<T>) {
+    const document = new Document<T>(props, this);
     this.collection.push(document);
     // get the relations data
-    this.populate(document);
+    // this.populate(document);
     return document;
   }
-  find(id: string) {
-    const documents = this.collection.filter(
-      (document) => document.data.id === id
-    );
-    documents.map((document) => {
-      this.populate(document);
-    });
-    return documents;
+  find(id: string[] | string) {
+    if (Array.isArray(id)) {
+      const documents = this.collection.filter((document) => {
+        return id.includes(document.data.id);
+      });
+      return documents;
+    } else {
+      const documents = this.collection.filter(
+        (document) => document.data.id === id
+      );
+      return documents;
+    }
   }
-  findOne(id: string) {
+  findOne(id: string, options?: FindOneOptions) {
     const document = this.collection.find(
       (document) => document.data.id === id
     );
-    document && this.populate(document);
+    if (!document) return;
+    if (options) {
+      const { populate } = options;
+      if (populate) {
+        this.populateOne(document, populate);
+      }
+    }
+    // document && this.populate(document);
     return document;
   }
-  private populate(document: Document) {
-    console.log('my relations are', this.relations);
-    Object.keys(this.relations).map((relationKey) => {
-      document.data[`${relationKey}`] =
+
+  private populateOne(
+    document: Document<T>,
+    relationsToPopulateKeys: string[]
+  ) {
+    relationsToPopulateKeys.map((relationKey) => {
+      (document.data as any)[`${relationKey}`] =
         this.relations[relationKey].type === 'HasOne'
           ? this.relations[relationKey].model.findOne(
-              document.data[`${relationKey}Id`]
+              (document.data as any)[`${relationKey}Id`]
             )?.data
           : this.relations[relationKey].model
-              .find([document.data[`${relationKey}Ids`]])
+              .find((document.data as any)[`${relationKey}Ids`])
               .map((document: any) => document.data);
     });
   }
+
+  private populate(document: Document<T>, relationsKeys: string[]) {
+    console.log('relations keys', relationsKeys);
+    relationsKeys.map((relationKey) => {
+      console.log('hello');
+      //   document.data[`${relationKey}`] =
+      //     this.relations[relationKey].type === 'HasOne'
+      //       ? this.relations[relationKey].model.findOne(
+      //           document.data[`${relationKey}Id`]
+      //         )?.data
+      //       : this.relations[relationKey].model
+      //           .find(document.data[`${relationKey}Ids`])
+      //           .map((document: any) => document.data);
+    });
+  }
+}
+interface HasMany<T extends BaseModel> {
+  type: 'HasMany';
+  model: Model<T>;
 }
 
-export const HasMany = (model: any) => {
-  // manipulate this model to have a mapped thing if it exists..
+export const HasMany = <T extends BaseModel>(model: Model<T>): HasMany<T> => {
+  // TODO: manipulate this model to have a mapped thing if it exists..
   return {
     type: 'HasMany',
     model: model,
   };
 };
 
-export const HasOne = (model: any) => {
+interface HasOne<T extends BaseModel> {
+  type: 'HasOne';
+  model: Model<T>;
+}
+export const HasOne = <T extends BaseModel>(model: Model<T>): HasOne<T> => {
   return {
     type: 'HasOne',
     model: model,
   };
 };
 
+type Relationify<
+  M extends Record<keyof M, Model<any>>,
+  R extends Partial<Record<keyof M, any>>
+> = {
+  [K in keyof M]: M[K] extends Model<infer P>
+    ? Model<
+        Extract<
+          P & AddProps<K, P, R[K]> extends infer O
+            ? { [K in keyof O]: O[K] }
+            : never,
+          BaseModel
+        >
+      >
+    : never;
+};
+
+type AddProps<K extends PropertyKey, P, R> = {
+  [L in keyof R as R[L] extends HasOne<any> ? L : never]: R[L] extends HasOne<
+    infer M
+  >
+    ? M
+    : never;
+} &
+  {
+    [L in keyof R as R[L] extends HasOne<any>
+      ? // stays as is
+        `${Extract<L, string>}Id`
+      : never]: R[L] extends HasOne<infer M>
+      ? Extract<M, BaseModel>['id']
+      : never;
+  } &
+  // has many property
+  {
+    [L in keyof R as R[L] extends HasMany<any>
+      ? // there used to be an added s at the end here, but not it's removed
+        `${Extract<L, string>}`
+      : never]: R[L] extends HasMany<infer M> ? M[] : never;
+  } &
+  // has many ids
+  {
+    [L in keyof R as R[L] extends HasMany<any>
+      ? `${Extract<L, string>}Ids`
+      : never]: R[L] extends HasMany<infer M>
+      ? Extract<M, BaseModel>['id'][]
+      : never;
+  };
+
 export class GoldenFishDB<
-  T,
-  DBModel extends ModelBase,
-  ConfigSchema extends { models: any; relations: any },
-  Config extends { schema: ConfigSchema }
+  T extends BaseModel,
+  DBModel extends Model<T>,
+  SchemaModels extends { [key: string]: DBModel },
+  SchemaModelsKeys extends keyof SchemaModels,
+  Relations extends { [key: string]: HasOne<T> | HasMany<T> },
+  SchemaRelations extends Partial<
+    {
+      [key in keyof SchemaModels]: any;
+    }
+  >,
+  FixturesIndex extends Partial<{ [key in keyof SchemaModels]: any[] }>
 > {
-  schema: any = {};
-  constructor(config: Config) {
+  // in here, we can 'fake' the typing of the models
+  schema: Relationify<SchemaModels, SchemaRelations>;
+  constructor(config: {
+    schema: { models: SchemaModels; relations: SchemaRelations };
+    fixtures?: FixturesIndex;
+  }) {
     const { schema } = config;
     const { models, relations } = schema;
 
-    Object.keys(models).map((modelKey) => {
-      if (relations[modelKey]) {
-        models[modelKey].relations = relations[modelKey];
+    Object.keys(models).map((modelKey: string) => {
+      if ((relations as any)[modelKey]) {
+        // casting it to any since relations is a private property
+        (models[modelKey] as any).relations = (relations as any)[modelKey];
       }
     });
 
-    this.schema = models;
-
-    return;
-
-    let schemaModels: any = {};
-
-    Object.keys(models).map((modelKey) => {
-      // create schema models in a specific shape?
-      schemaModels[modelKey] = models[modelKey];
-      // find if there is a relation for this model..
-      if (relations[modelKey]) {
-        schemaModels[modelKey] = {
-          ...schemaModels[modelKey],
-          relations: relations[modelKey],
-        };
-      }
-      // const thisModelRelations = relations[modelKey];
-      // console.log(models);
-      // let myRelations = { model: models[thisModelRelations] };
-      // console.log('myrelations', myRelations);
-      // console.log('model', modelKey, 'relations', thisModelRelations);
-      // }
-    });
-    // create all of the models first, while pre-assuming their relationships properties
-    Object.keys(schemaModels).map((modelKey) => {
-      this.schema[modelKey] = new Model(modelKey);
-    });
-    // add in their relationships
-    Object.keys(schemaModels).map((modelKey) => {
-      this.schema[modelKey].relations = schemaModels[modelKey].relations;
-    });
-    console.log(this.schema);
+    this.schema = models as any;
   }
 }
-
-// export class Database<
-//   T extends ModelBase,
-//   ModelsIndex extends {
-//     [key: string]: Model<T>;
-//   },
-//   ModelsIndexWithRelations extends {
-//     [key: string]: Model<T & { potato: any }>;
-//   },
-//   ModelsTypeKeys extends keyof ModelsIndex,
-//   RelationsProps extends { [key: string]: any },
-//   Relations extends Partial<{ [key in ModelsTypeKeys]: RelationsProps }>,
-//   RelationsKeys extends keyof Relations,
-//   ModelsRelations extends Relations,
-//   ModelsRelationsKeys extends keyof ModelsRelations,
-//   ModelsSeeds extends {
-//     [key in ModelsTypeKeys]: PartialBy<
-//       extractGeneric<ModelsIndex[key]>,
-//       'id'
-//     >[];
-//   }
-// > {
-//   models: ModelsIndexWithRelations;
-//   constructor(
-//     models: ModelsIndex,
-//     relations: ModelsRelations /*seeds?: Partial<ModelsSeeds>*/
-//   ) {
-//     this.models = models;
-//     // if (seeds) {
-//     // Object.keys(seeds).forEach((key) => {
-//     //   // ...
-//     // });
-//     // }
-//   }
-// }

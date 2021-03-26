@@ -38,17 +38,21 @@ const test = () => {
         user: {
           userRole: HasOne(roleModel),
           posts: HasMany(postModel),
-          //   comments: HasMany('comment'),
+          // comments: HasMany('comment'),
+        },
+        post: {
+          author: HasOne(userModel),
         },
       },
     },
+    fixtures: { user: [{ id: '1' }] },
   });
 
   db.schema.user.create({
     id: '1',
     name: 'john',
     userRoleId: '1',
-    postsIds: ['1'],
+    postsIds: ['1', '123'],
   });
   db.schema.role.create({ id: '1', name: 'admin' });
   db.schema.post.create({
@@ -56,22 +60,14 @@ const test = () => {
     title: 'post title',
     text: 'post text....',
   });
-  const user = db.schema.user.findOne('1');
-  console.log(user);
-
-  // TODO: user.data should log
-  /**
- {
-     id:"1",
-     name:"john",
-     roleId:"1",
-     role:{
-         id:"1",
-         name:"admin"
-     }
- }
- */
-  console.log(user);
+  db.schema.post.create({ id: '123', title: 'this is my title' });
+  // const user = db.schema.user.findOne('1', { populate: ['posts', 'userRole'] });
+  // need to infer the relations properties
+  const user = db.schema.user.findOne('1', { populate: ['posts'] });
+  if (user) {
+    const userObj = user.toObject();
+    console.log(userObj);
+  }
 };
 
 test();
