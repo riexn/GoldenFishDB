@@ -1,8 +1,8 @@
 import { expect } from 'chai';
-import { GoldenFishDB, HasMany, HasOne } from '../src';
+import { GoldenFishDB } from '../src';
 
 describe('Database', function () {
-  it.only('should create database instance', function () {
+  it('should create database instance', function () {
     // db.schema.user.create({});
     // console.log(db.schema);
     //
