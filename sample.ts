@@ -38,14 +38,17 @@ const test = () => {
         user: {
           userRole: HasOne(roleModel),
           posts: HasMany(postModel),
-          // comments: HasMany('comment'),
+          comments: HasMany(commentModel),
         },
         post: {
           author: HasOne(userModel),
+          editor: HasOne(userModel),
         },
       },
     },
-    fixtures: { user: [{ id: '1' }] },
+    defaults: { user: {} },
+    // should get the user's T
+    fixtures: { user: [{ name: 'potato' }] },
   });
 
   db.schema.user.create({
@@ -61,6 +64,7 @@ const test = () => {
     text: 'post text....',
   });
   db.schema.post.create({ id: '123', title: 'this is my title' });
+  db.schema.post.create({ id: '123' });
   // const user = db.schema.user.findOne('1', { populate: ['posts', 'userRole'] });
   // need to infer the relations properties
   const user = db.schema.user.findOne('1', { populate: ['posts'] });

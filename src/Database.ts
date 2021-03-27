@@ -1,13 +1,7 @@
 import { map } from 'lodash';
 import { ModelBase } from './Model';
-import { extractGeneric, PartialBy } from './utils';
-
-// export const BelongsTo = <T extends ModelBase>(
-//   // the model it belongs to
-//   model: Model<T>
-// ) => {};
-
-// export const BelongsTo = <T extends ModelBase>(model: Model<T>) => {};
+// import { ExtractModelGeneric, PartialBy } from './utils';
+export type ExtractModelGeneric<Type> = Type extends Model<infer X> ? X : never;
 
 interface BaseModel {
   id: string;
@@ -31,6 +25,7 @@ interface FindOneOptions {
 
 export class Model<T extends BaseModel> {
   private relations: any = {};
+  privateRandom: { potato: string } = { potato: 'hi' };
   collection: Document<T>[] = [];
   constructor(schema?: T) {}
 
@@ -173,22 +168,35 @@ type AddProps<K extends PropertyKey, P, R> = {
 
 export class GoldenFishDB<
   T extends BaseModel,
-  DBModel extends Model<T>,
-  SchemaModels extends { [key: string]: DBModel },
-  SchemaModelsKeys extends keyof SchemaModels,
+  SchemaModels extends { [key: string]: Model<T> },
   Relations extends { [key: string]: HasOne<T> | HasMany<T> },
   SchemaRelations extends Partial<
     {
-      [key in keyof SchemaModels]: any;
+      [key in keyof SchemaModels]: Relations;
     }
   >,
-  FixturesIndex extends Partial<{ [key in keyof SchemaModels]: any[] }>
+  SchemaRelationedModels extends Relationify<SchemaModels, SchemaRelations>,
+  // TODO: get the population field, and make it empty in defaults and fixtures as they get modified when populating the data
+  DefaultsIndex extends Partial<
+    {
+      [key in keyof SchemaModels]: Partial<
+        Omit<ExtractModelGeneric<SchemaRelationedModels[key]>, 'id'>
+      >;
+    }
+  >,
+  FixturesIndex extends Partial<
+    {
+      [key in keyof SchemaModels]: Partial<
+        ExtractModelGeneric<SchemaRelationedModels[key]>
+      >[];
+    }
+  >
 > {
-  // in here, we can 'fake' the typing of the models
   schema: Relationify<SchemaModels, SchemaRelations>;
   constructor(config: {
     schema: { models: SchemaModels; relations: SchemaRelations };
     fixtures?: FixturesIndex;
+    defaults?: DefaultsIndex;
   }) {
     const { schema } = config;
     const { models, relations } = schema;
