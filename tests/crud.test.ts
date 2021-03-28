@@ -141,7 +141,4 @@ describe('Database CRUD', () => {
       { id: '4', name: 'jenny' },
     ]);
   });
-  // TODO: update document from its own class
-  // TODO: delete document from its own class
-  // for both, check if the value in the model collection class is updated too.
 });

@@ -35,6 +35,8 @@ export class GoldenFishDB<
 > {
   schema: Relationify<SchemaModels, SchemaRelations>;
   constructor(config: {
+    // TODO: relations potential generated keys must not conflict with models keys
+    // if a model has a "role" key, then relations should not be able to use "role" as well
     schema: { models: SchemaModels; relations?: SchemaRelations };
     fixtures?: FixturesIndex;
     defaults?: DefaultsIndex;

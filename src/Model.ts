@@ -5,11 +5,11 @@ import { Document } from './Document';
 import { BaseModel } from './types';
 
 interface FindOneOptions {
-  populate: any;
+  populate: string[];
 }
 
 export class Model<T extends BaseModel> {
-  private relations: any = {};
+  relations: any[] = [];
   privateRandom: { potato: string } = { potato: 'hi' };
   collection: Document<T>[] = [];
   constructor(schema?: T) {}
@@ -78,21 +78,68 @@ export class Model<T extends BaseModel> {
     document: Document<T>,
     relationsToPopulateKeys: string[]
   ) {
-    relationsToPopulateKeys.map((relationKey) => {
-      (document.data as any)[`${relationKey}`] =
-        this.relations[relationKey].type === 'HasOne'
-          ? this.relations[relationKey].model.findOne(
-              (document.data as any)[`${relationKey}Id`]
-            )?.data
-          : this.relations[relationKey].model
-              .find((document.data as any)[`${relationKey}Ids`])
-              .map((document: any) => document.data);
+    relationsToPopulateKeys.map((relationKey: any) => {
+      if (this.isHasOneRelation(relationKey)) {
+        this.getHasOneData(document, relationKey);
+      } else {
+        this.getHasManyData(document, relationKey);
+      }
     });
   }
+
+  private isHasOneRelation(relationKey: any) {
+    return this.relations[relationKey].type === 'HasOne';
+  }
+
+  private getHasOneData(document: any, relationKey: any) {
+    const relationData = this.relations[relationKey].model.findOne(
+      (document.data as any)[`${relationKey}Id`]
+    )?.data;
+    document.data[relationKey] = relationData;
+  }
+
+  private getHasManyData(document: any, relationKey: any) {
+    document.data[relationKey] = this.relations[relationKey].model
+      .find((document.data as any)[`${relationKey}Ids`])
+      .map((document: any) => document.data);
+  }
+
+  private getRelationType(document: any, relationKey: any) {}
+  private populateHasOne() {}
 
   delete(findProps: Partial<T>) {
     const documents = this.find(findProps);
     documents.map((document) => document.delete());
+  }
+
+  private populateOneB(document: any) {
+    this.relations.forEach((relation) => {
+      if (document.data[relation.foreignKey]) {
+        const relatedProperty = relation.model.findOne(relation.foreignKey);
+        document.data[relation.propertyName] = relatedProperty;
+      }
+    });
+  }
+
+  private hasRelations() {
+    return this.relations.length > 0;
+  }
+
+  private populateOneC(document: any, propertiesToPopulate: string[]) {
+    propertiesToPopulate.forEach((propertyToPopulate) => {
+      const relation =
+        this.hasRelations() &&
+        this.relations.find(
+          (relation) => relation.propertyName === propertyToPopulate
+        );
+      if (relation) {
+        if (document.data[relation.foreignKey]) {
+          const relatedProperty = relation.model.findOne(relation.foreignKey);
+          document.data[relation.propertyName] = relatedProperty;
+        }
+      }
+    });
+    // foreign key(s)
   }
 
   private populate(document: Document<T>, relationsKeys: string[]) {
