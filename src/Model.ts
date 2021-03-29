@@ -8,9 +8,15 @@ interface FindOneOptions {
   populate: string[];
 }
 
+export interface RelatedTo {
+  foreignKey: string;
+  model: Model<any>;
+  type: 'HasMany' | 'HasOne';
+}
+
 export class Model<T extends BaseModel> {
-  relations: any[] = [];
-  privateRandom: { potato: string } = { potato: 'hi' };
+  relations: any = {};
+  relatedTo: RelatedTo[] = [];
   collection: Document<T>[] = [];
   constructor(schema?: T) {}
 
@@ -55,7 +61,7 @@ export class Model<T extends BaseModel> {
       if (!document) return;
       if (options) {
         const { populate } = options;
-        if (populate) {
+        if (populate.length > 0) {
           this.populateOne(document, populate);
         }
       }
@@ -104,57 +110,9 @@ export class Model<T extends BaseModel> {
       .map((document: any) => document.data);
   }
 
-  private getRelationType(document: any, relationKey: any) {}
-  private populateHasOne() {}
-
   delete(findProps: Partial<T>) {
     const documents = this.find(findProps);
     documents.map((document) => document.delete());
-  }
-
-  private populateOneB(document: any) {
-    this.relations.forEach((relation) => {
-      if (document.data[relation.foreignKey]) {
-        const relatedProperty = relation.model.findOne(relation.foreignKey);
-        document.data[relation.propertyName] = relatedProperty;
-      }
-    });
-  }
-
-  private hasRelations() {
-    return this.relations.length > 0;
-  }
-
-  private populateOneC(document: any, propertiesToPopulate: string[]) {
-    propertiesToPopulate.forEach((propertyToPopulate) => {
-      const relation =
-        this.hasRelations() &&
-        this.relations.find(
-          (relation) => relation.propertyName === propertyToPopulate
-        );
-      if (relation) {
-        if (document.data[relation.foreignKey]) {
-          const relatedProperty = relation.model.findOne(relation.foreignKey);
-          document.data[relation.propertyName] = relatedProperty;
-        }
-      }
-    });
-    // foreign key(s)
-  }
-
-  private populate(document: Document<T>, relationsKeys: string[]) {
-    console.log('relations keys', relationsKeys);
-    relationsKeys.map((relationKey) => {
-      console.log('hello');
-      //   document.data[`${relationKey}`] =
-      //     this.relations[relationKey].type === 'HasOne'
-      //       ? this.relations[relationKey].model.findOne(
-      //           document.data[`${relationKey}Id`]
-      //         )?.data
-      //       : this.relations[relationKey].model
-      //           .find(document.data[`${relationKey}Ids`])
-      //           .map((document: any) => document.data);
-    });
   }
 }
 

@@ -45,9 +45,26 @@ export class GoldenFishDB<
     const { models, relations } = schema;
 
     Object.keys(models).map((modelKey: string) => {
-      if (relations && (relations as any)[modelKey]) {
+      const modelHasDefinedRelations =
+        relations && (relations as any)[modelKey];
+      if (modelHasDefinedRelations) {
         // casting it to any since relations is a private property
         (models[modelKey] as any).relations = (relations as any)[modelKey];
+
+        // loop those relations
+        const modelRelations = (<any>relations)[modelKey];
+        const relationsKeys = Object.keys(modelRelations);
+        relationsKeys.forEach((relatedToKey) => {
+          const modelToBeManipulated = modelRelations[relatedToKey].model;
+          const dataToAdd: any = {
+            foreignKey: `${relatedToKey}${
+              modelRelations[relatedToKey].type === 'HasOne' ? 'Id' : 'Ids'
+            }`,
+            type: modelRelations[relatedToKey].type,
+            model: models[modelKey],
+          };
+          modelToBeManipulated.relatedTo.push(dataToAdd);
+        });
       }
     });
 

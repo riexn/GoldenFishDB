@@ -59,6 +59,56 @@ describe('Database CRUD', () => {
     expect(user?.data).to.eql({ id: '2', name: 'emma' });
   });
 
+  it('should find a single document based on id', () => {
+    const userModel = new Model<IUserModel>();
+    const db = new GoldenFishDB({
+      schema: { models: { user: userModel } },
+    });
+    db.schema.user.create([
+      { id: '1', name: 'john' },
+      { id: '2', name: 'emma' },
+      { id: '3', name: 'lenny' },
+      { id: '4', name: 'jenny' },
+    ]);
+    const user = db.schema.user.findOne('3');
+    expect(user?.data).to.eql({ id: '3', name: 'lenny' });
+  });
+
+  it('should return undefined if document with given id does not exist', () => {
+    const userModel = new Model<IUserModel>();
+    const db = new GoldenFishDB({
+      schema: { models: { user: userModel } },
+    });
+    db.schema.user.create([
+      { id: '1', name: 'john' },
+      { id: '2', name: 'emma' },
+      { id: '3', name: 'lenny' },
+      { id: '4', name: 'jenny' },
+    ]);
+    const user = db.schema.user.findOne('5');
+    expect(user).to.eql(undefined);
+  });
+
+  // it('should find a single document based on a property that is an array of strings or numbers', () => {
+  //   const userModel = new Model<IUserModel & { items: string[] }>();
+  //   const db = new GoldenFishDB({
+  //     schema: { models: { user: userModel } },
+  //   });
+  //   db.schema.user.create([
+  //     { id: '1', name: 'john', items: ['lettuce', 'banana', 'grape'] },
+  //     { id: '2', name: 'emma', items: ['apple', 'orange', 'melon'] },
+  //     { id: '3', name: 'lenny', items: ['apple', 'carrot', 'cucumber'] },
+  //     { id: '4', name: 'jenny', items: ['orange', 'grape', 'melon'] },
+  //   ]);
+  // FIXME: limitation is that we are restricted to an array shape
+  //   const user = db.schema.user.findOne({ items: ['apple'] });
+  //   expect(user?.data).to.eql({
+  //     id: '2',
+  //     name: 'emma',
+  //     items: ['apple', 'orange', 'melon'],
+  //   });
+  // });
+
   it('should find many documents based on array of ids', () => {
     const userModel = new Model<IUserModel>();
     const db = new GoldenFishDB({
