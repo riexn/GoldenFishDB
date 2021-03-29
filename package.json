@@ -6,9 +6,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "node ./src/index.ts",
-    "test": "nyc mocha -r ts-node/register tests/**/*.test.ts",
-    "test:one": "mocha -r ts-node/register",
-    "coverage": "nyc -r lcov -e .ts -x \"*.test.ts\" yarn test"
+    "test": "mocha -r ts-node/register tests/**/*.test.ts",
+    "test:coverage": "nyc mocha -r ts-node/register tests/**/*.test.ts"
   },
   "devDependencies": {
     "@types/chai": "^4.2.15",
