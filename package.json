@@ -1,13 +1,19 @@
 {
-  "name": "GoldenFishDB",
+  "name": "goldenfishdb",
   "version": "1.0.0",
-  "main": "index.js",
-  "author": "riexn <37214468+riexn@users.noreply.github.com>",
+  "author": "riexn <riexn.dev@gmail.com>",
   "license": "MIT",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "/dist"
+  ],
   "scripts": {
-    "dev": "node ./src/index.ts",
+    "build": "rm -rf ./dist && tsc",
     "test": "mocha -r ts-node/register tests/**/*.test.ts",
-    "test:coverage": "nyc mocha -r ts-node/register tests/**/*.test.ts"
+    "test:coverage": "nyc mocha -r ts-node/register tests/**/*.test.ts",
+    "prepublishOnly": "yarn test",
+    "prepare": "yarn build"
   },
   "devDependencies": {
     "@types/chai": "^4.2.15",
@@ -25,5 +31,9 @@
     "lodash": "^4.17.21",
     "sinon": "^10.0.0",
     "uuid": "^8.3.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/riexn/GoldenFishDB"
   }
 }
